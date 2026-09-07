@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Enhanced Auth + Role Dashboard (Single File)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: #ffffff;
+      --text: #111111;
+      --muted: #666666;
+      --border: #e0e0e0;
+      --primary: #2563eb;
+      --primary-fg: #ffffff;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warn: #ca8a04;
+      --link: #2563eb;
+    }
+    body.dark {
+      --bg: #0f1115;
+      --card: #161920;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #262a33;
+      --primary: #3b82f6;
+      --primary-fg: #0b1020;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warn: #fbbf24;
+      --link: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    a { color: var(--link); text-decoration: none; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      font-weight: 700;
+    }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button, select, input {
+      font: inherit;
+      color: inherit;
+    }
+    button {
+      background: var(--primary);
+      color: var(--primary-fg);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.danger {
+      background: var(--danger);
+      color: white;
+    }
+    main {
+      max-width: 1100px;
+      margin: 16px auto;
+      padding: 0 16px;
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 15px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    input[type="text"], input[type="email"], input[type="password"], select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .muted { color: var(--muted); font-size: 13px; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      margin-right: 6px;
+    }
+    .tag.success { background: rgba(34,197,94,0.15); color: var(--success); border-color: rgba(34,197,94,0.4); }
+    .tag.danger { background: rgba(239,68,68,0.15); color: var(--danger); border-color: rgba(239,68,68,0.4); }
+    .tag.warn { background: rgba(251,191,36,0.15); color: var(--warn); border-color: rgba(251,191,36,0.4); }
+    .hidden { display: none !important; }
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 0 20px;
+    }
+    .nav {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .nav button {
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .nav button.active {
+      background: var(--text);
+      color: var(--bg);
+    }
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .log-table th, .log-table td {
+      text-align: left;
+      padding: 6px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .checkbox-row input[type="checkbox"] {
+      margin: 0;
+    }
+    .timeout-banner {
+      background: rgba(251,191,36,0.15);
+      border: 1px solid var(--warn);
+      color: var(--warn);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Enhanced Auth + Role Dashboard</h1>
+    <div class="header-actions">
+      <button id="themeToggle" class="secondary">Toggle theme</button>
+      <div id="authArea" class="row">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- AUTH CARDS -->
+    <section id="authCard" class="card">
+      <div class="row" style="margin-bottom:10px;">
+        <button id="showLoginBtn" class="secondary">Login</button>
+        <button id="showSignupBtn" class="secondary">Sign up</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div id="loginForm">
+        <h2>Login</h2>
+        <div class="muted" style="margin-bottom:8px;">
+          Demo accounts: admin@example.com / admin123, user@example.com / user123
+        </div>
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com" />
+        <label>Password</label>
+        <input id="loginPass" type="password" placeholder="••••••••" />
+        <div class="checkbox-row">
+          <input id="rememberMe" type="checkbox" />
+          <label for="rememberMe" style="margin:0;">Remember me</label>
+        </div>
+        <div class="row">
+          <button id="loginBtn">Login</button>
+          <div id="loginError" class="tag danger hidden">Invalid credentials</div>
+        </div>
+        <div id="timeoutBanner" class="timeout-banner hidden">
+          Your session expired due to inactivity. Please login again.
+        </div>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div id="signupForm" class="hidden">
+        <h2>Sign up</h2>
+        <label>Name</label>
+        <input id="signupName" type="text" placeholder="Your name" />
+        <label>Email</label>
+        <input id="signupEmail" type="email" placeholder="you@example.com" />
+        <label>Password</label>
+        <input id="signupPass" type="password" placeholder="••••••••" />
+        <label>Role</label>
+        <select id="signupRole">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+        <div class="row">
+          <button id="signupBtn">Create account</button>
+          <div id="signupMsg" class="tag hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD (protected) -->
+    <section id="dashboardCard" class="card hidden">
+      <h2>Dashboard</h2>
+      <div class="muted" style="margin-bottom:8px;">
+        Logged in as: <strong id="displayName"></strong>
+        <span id="displayMeta" class="muted"></span>
+      </div>
+
+      <div class="nav">
+        <button data-page="home" class="navBtn active">Home</button>
+        <button data-page="profile" class="navBtn">Profile</button>
+        <button data-page="security" class="navBtn">Security</button>
+        <button data-page="activity" class="navBtn">Activity</button>
+        <button data-page="admin" class="navBtn hidden">Admin</button>
+      </div>
+
+      <!-- HOME PAGE -->
+      <div id="pageHome" class="page">
+        <h3>Welcome to your dashboard</h3>
+        <p class="muted">
+          This is a role-based dashboard with enhanced features. Your available pages depend on your role.
+        </p>
+        <div class="card" style="border:none; padding:0; margin-top:10px;">
+          <h4>Quick actions</h4>
+          <div class="row">
+            <button id="demoActionBtn">Run demo action</button>
+            <button id="demoFailBtn" class="secondary">Simulate failed action</button>
+            <div id="demoActionResult" class="tag hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE PAGE -->
+      <div id="pageProfile" class="page hidden">
+        <h3>Profile</h3>
+        <label>Name</label>
+        <input id="profileName" type="text" />
+        <label>Email</label>
+        <input id="profileEmail" type="email" disabled />
+        <label>Role</label>
+        <input id="profileRole" type="text" disabled />
+        <div class="row">
+          <button id="saveProfileBtn">Save changes</button>
+          <div id="profileMsg" class="tag hidden"></div>
+        </div>
+      </div>
+
+      <!-- SECURITY PAGE -->
+      <div id="pageSecurity" class="page hidden">
+        <h3>Security Settings</h3>
+        <label>Current password</label>
+        <input id="curPass" type="password" />
+        <label>New password</label>
+        <input id="newPass" type="password" />
+        <label>Confirm new password</label>
+        <input id="confPass" type="password" />
+        <div class="row">
+          <button id="changePassBtn">Update password</button>
+          <div id="passMsg" class="tag hidden"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <button id="logoutBtn" class="danger">Logout</button>
+        </div>
+      </div>
+
+      <!-- ACTIVITY PAGE -->
+      <div id="pageActivity" class="page hidden">
+        <h3>Activity Log</h3>
+        <p class="muted">Recent login/logout actions for your account.</p>
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="activityBody"></tbody>
+        </table>
+      </div>
+
+      <!-- ADMIN PAGE (only for admin role) -->
+      <div id="pageAdmin" class="page hidden">
+        <h3>Admin Panel</h3>
+        <p class="muted">Only users with role "admin" can see this page.</p>
+
+        <div class="row" style="margin-bottom:10px;">
+          <button id="exportUsersBtn" class="secondary">Export users (CSV)</button>
+          <div id="exportMsg" class="tag hidden"></div>
+        </div>
+
+        <div class="card" style="border:none; padding:0;">
+          <h4>All users</h4>
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card" style="border:none; padding:0; margin-top:16px;">
+          <h4>System activity</h4>
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="systemActivityBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">
+      Single-file demo for education. Extend with a real backend, secure password hashing, and proper sessions for production.
+    </div>
+  </main>
+
+  <script>
+    // ---------------------------
+    // Storage & Data
+    // ---------------------------
+    const USERS_KEY = "auth_users";
+    const SESSION_KEY = "auth_session";
+    const THEME_KEY = "auth_theme_dark";
+    const ACTIVITY_KEY = "auth_activity";
+
+    function loadUsers() {
+      const raw = localStorage.getItem(USERS_KEY);
+      if (raw) return JSON.parse(raw);
+      const demo = [
+        { id: "u1", name: "Admin User", email: "admin@example.com", password: "admin123", role: "admin" },
+        { id: "u2", name: "Regular User", email: "user@example.com", password: "user123", role: "user" }
+      ];
+      localStorage.setItem(USERS_KEY, JSON.stringify(demo));
+      return demo;
+    }
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+    function getSession() {
+      const raw = localStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+    function setSession({ userId, remember }) {
+      const session = {
+        userId,
+        loginAt: Date.now(),
+        lastActivity: Date.now(),
+        remember: !!remember
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+    function updateSessionActivity() {
+      const s = getSession();
+      if (!s) return;
+      s.lastActivity = Date.now();
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    }
+    function clearSession() {
+      localStorage.removeItem(SESSION_KEY);
+    }
+    function loadActivity() {
+      const raw = localStorage.getItem(ACTIVITY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }
+    function saveActivity(list) {
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(list));
+    }
+    function addActivity(entry) {
+      const list = loadActivity();
+      // entry: { time, userId?, email?, action, details }
+      list.unshift(entry);
+      if (list.length > 300) list.pop();
+      saveActivity(list);
+    }
+
+    // ---------------------------
+    // Auth logic
+    // ---------------------------
+    function getUserByEmail(email) {
+      const users = loadUsers();
+      return users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    }
+    function getUserById(id) {
+      const users = loadUsers();
+      return users.find(u => u.id === id);
+    }
+    function createUser({ name, email, password, role }) {
+      const users = loadUsers();
+      if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+        return { ok: false, error: "Email already exists" };
+      }
+      const id = "u" + (users.length + 1);
+      const user = { id, name, email, password, role };
+      users.push(user);
+      saveUsers(users);
+      return { ok: true, user };
+    }
+    function login(email, password, remember) {
+      const user = getUserByEmail(email);
+      if (!user || user.password !== password) {
+        return { ok: false, error: "Invalid credentials" };
+      }
+      setSession({ userId: user.id, remember });
+      addActivity({
+        time: new Date().toISOString(),
+        email: user.email,
+        userId: user.id,
+        action: "LOGIN",
+        details: remember ? "Remember me enabled" : "Standard session"
+      });
+      return { ok: true, user };
+    }
+    function logout(userId) {
+      const user = getUserById(userId);
+      addActivity({
+        time: new Date().toISOString(),
+        userId,
+        email: user ? user.email : "unknown",
+        action: "LOGOUT",
+        details: "User logged out"
+      });
+      clearSession();
+    }
+    function updateProfile(userId, updates) {
+      const users = loadUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx === -1) return { ok: false };
+      users[idx] = { ...users[idx], ...updates };
+      saveUsers(users);
+      return { ok: true, user: users[idx] };
+    }
+    function changePassword(userId, current, newPass) {
+      const users = loadUsers();
+      const user = users.find(u => u.id === userId);
+      if (!user || user.password !== current) return { ok: false, error: "Current password wrong" };
+      if (!newPass || newPass.length < 4) return { ok: false, error: "New password too short" };
+      user.password = newPass;
+      saveUsers(users);
+      return { ok: true };
+    }
+    function deleteUserById(targetId, actorUserId) {
+      const users = loadUsers();
+      const target = users.find(u => u.id === targetId);
+      const actor = users.find(u => u.id === actorUserId);
+      if (!target || !actor) return { ok: false, error: "Invalid user" };
+      if (actor.role !== "admin") return { ok: false, error: "Not authorized" };
+      if (target.role === "admin" && target.id !== actor.id) {
+        return { ok: false, error: "Cannot delete other admins" };
+      }
+      const filtered = users.filter(u => u.id !== targetId);
+      saveUsers(filtered);
+      addActivity({
+        time: new Date().toISOString(),
+        userId: actorUserId,
+        email: actor.email,
+        action: "DELETE_USER",
+        details: `Deleted user ${target.email}`
+      });
+      return { ok: true };
+    }
+
+    // ---------------------------
+    // Session timeout
+    // ---------------------------
+    const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+    let timeoutBannerVisible = false;
+
+    function checkSessionTimeout() {
+      const s = getSession();
+      const banner = document.getElementById("timeoutBanner");
+      if (!s) {
+        // no session
+        if (timeoutBannerVisible) {
+          // already cleared by renderAuth
+        }
+        return;
+      }
+      const idle = Date.now() - s.lastActivity;
+      if (idle > SESSION_TIMEOUT_MS && !s.remember) {
+        // expire session
+        logout(s.userId);
+        clearSession();
+        timeoutBannerVisible = true;
+        banner.classList.remove("hidden");
+        renderAuth();
+      }
+    }
+    setInterval(checkSessionTimeout, 30000); // every 30s
+
+    // ---------------------------
+    // UI State
+    // ---------------------------
+    const themeToggle = document.getElementById("themeToggle");
+    const authArea = document.getElementById("authArea");
+    const authCard = document.getElementById("authCard");
+    const dashboardCard = document.getElementById("dashboardCard");
+
+    const showLoginBtn = document.getElementById("showLoginBtn");
+    const showSignupBtn = document.getElementById("showSignupBtn");
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPass = document.getElementById("loginPass");
+    const rememberMe = document.getElementById("rememberMe");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginError = document.getElementById("loginError");
+    const timeoutBanner = document.getElementById("timeoutBanner");
+
+    const signupName = document.getElementById("signupName");
+    const signupEmail = document.getElementById("signupEmail");
+    const signupPass = document.getElementById("signupPass");
+    const signupRole = document.getElementById("signupRole");
+    const signupBtn = document.getElementById("signupBtn");
+    const signupMsg = document.getElementById("signupMsg");
+
+    const displayName = document.getElementById("displayName");
+    const displayMeta = document.getElementById("displayMeta");
+
+    const navBtns = document.querySelectorAll(".navBtn");
+    const pages = {
+      home: document.getElementById("pageHome"),
+      profile: document.getElementById("pageProfile"),
+      security: document.getElementById("pageSecurity"),
+      activity: document.getElementById("pageActivity"),
+      admin: document.getElementById("pageAdmin")
+    };
+
+    const profileName = document.getElementById("profileName");
+    const profileEmail = document.getElementById("profileEmail");
+    const profileRole = document.getElementById("profileRole");
+    const saveProfileBtn = document.getElementById("saveProfileBtn");
+    const profileMsg = document.getElementById("profileMsg");
+
+    const curPass = document.getElementById("curPass");
+    const newPass = document.getElementById("newPass");
+    const confPass = document.getElementById("confPass");
+    const changePassBtn = document.getElementById("changePassBtn");
+    const passMsg = document.getElementById("passMsg");
+
+    const logoutBtn = document.getElementById("logoutBtn");
+    const demoActionBtn = document.getElementById("demoActionBtn");
+    const demoFailBtn = document.getElementById("demoFailBtn");
+    const demoActionResult = document.getElementById("demoActionResult");
+
+    const adminUsersBody = document.getElementById("adminUsersBody");
+    const systemActivityBody = document.getElementById("systemActivityBody");
+    const exportUsersBtn = document.getElementById("exportUsersBtn");
+    const exportMsg = document.getElementById("exportMsg");
+
+    const activityBody = document.getElementById("activityBody");
+
+    // ---------------------------
+    // Theme
+    // ---------------------------
+    function applyTheme() {
+      const dark = localStorage.getItem(THEME_KEY) === "1";
+      document.body.classList.toggle("dark", dark);
+      themeToggle.textContent = dark ? "Light theme" : "Dark theme";
+    }
+    themeToggle.addEventListener("click", () => {
+      const nowDark = !document.body.classList.contains("dark");
+      localStorage.setItem(THEME_KEY, nowDark ? "1" : "0");
+      applyTheme();
+    });
+    applyTheme();
+
+    // ---------------------------
+    // Routing / Pages
+    // ---------------------------
+    function showPage(pageName) {
+      Object.keys(pages).forEach(k => {
+        pages[k].classList.add("hidden");
+      });
+      pages[pageName].classList.remove("hidden");
+      navBtns.forEach(b => {
+        b.classList.toggle("active", b.dataset.page === pageName);
+      });
+      updateSessionActivity(); // mark activity on nav
+    }
+
+    // ---------------------------
+    // Auth UI
+    // ---------------------------
+    function renderAuth() {
+      const session = getSession();
+      authArea.innerHTML = "";
+      if (!session) {
+        authCard.classList.remove("hidden");
+        dashboardCard.classList.add("hidden");
+        timeoutBanner.classList.add("hidden");
+        timeoutBannerVisible = false;
+      } else {
+        authCard.classList.add("hidden");
+        dashboardCard.classList.remove("hidden");
+
+        const user = getUserById(session.userId);
+        if (!user) {
+          clearSession();
+          renderAuth();
+          return;
+        }
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = `${user.name} (${user.role})`;
+        authArea.appendChild(nameSpan);
+
+        const dashboardBtn = document.createElement("button");
+        dashboardBtn.className = "secondary";
+        dashboardBtn.textContent = "Dashboard";
+        dashboardBtn.addEventListener("click", () => showPage("home"));
+        authArea.appendChild(dashboardBtn);
+      }
+    }
+
+    // Login / Signup views
+    showLoginBtn.addEventListener("click", () => {
+      loginForm.classList.remove("hidden");
+      signupForm.classList.add("hidden");
+      timeoutBanner.classList.add("hidden");
+      timeoutBannerVisible = false;
+    });
+    showSignupBtn.addEventListener("click", () => {
+      signupForm.classList.remove("hidden");
+      loginForm.classList.add("hidden");
+    });
+
+    loginBtn.addEventListener("click", () => {
+      loginError.classList.add("hidden");
+      const email = loginEmail.value.trim();
+      const pass = loginPass.value;
+      const remember = rememberMe.checked;
+      const res = login(email, pass, remember);
+      if (!res.ok) {
+        loginError.classList.remove("hidden");
+        return;
+      }
+      loginEmail.value = "";
+      loginPass.value = "";
+      rememberMe.checked = false;
+      renderAuth();
+      initDashboard();
+    });
+
+    signupBtn.addEventListener("click", () => {
+      signupMsg.classList.add("hidden", "success", "danger");
+      const name = signupName.value.trim();
+      const email = signupEmail.value.trim();
+      const pass = signupPass.value;
+      const role = signupRole.value;
+
+      if (!name || !email || !pass) {
+        signupMsg.textContent = "Fill all fields";
+        signupMsg.classList.remove("hidden");
+        signupMsg.classList.add("danger");
+        return;
+      }
+      const res = createUser({ name, email, password: pass, role });
+      if (!res.ok) {
+        signupMsg.textContent = res.error || "Signup failed";
+        signupMsg.classList.remove("hidden");
+        signupMsg.classList.add("danger");
+        return;
+      }
+      signupMsg.textContent = "Account created. You can login now.";
+      signupMsg.classList.remove("hidden");
+      signupMsg.classList.add("success");
+      signupName.value = "";
+      signupEmail.value = "";
+      signupPass.value = "";
+    });
+
+    // ---------------------------
+    // Dashboard
+    // ---------------------------
+    function initDashboard() {
+      const session = getSession();
+      if (!session) return;
+      const user = getUserById(session.userId);
+      if (!user) return;
+
+      displayName.textContent = user.name.toUpperCase();
+      displayMeta.textContent = ` • ${user.email} • ${user.role}`;
+
+      // Profile
+      profileName.value = user.name;
+      profileEmail.value = user.email;
+      profileRole.value = user.role;
+
+      // Admin page visibility
+      const adminBtn = document.querySelector('.navBtn[data-page="admin"]');
+      if (user.role === "admin") {
+        adminBtn.classList.remove("hidden");
+        renderAdminUsers();
+        renderSystemActivity();
+      } else {
+        adminBtn.classList.add("hidden");
+      }
+
+      showPage("home");
+      renderActivityLog();
+    }
+
+    navBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const page = btn.dataset.page;
+        if (page === "admin") {
+          const session = getSession();
+          if (!session) return;
+          const user = getUserById(session.userId);
+          if (!user || user.role !== "admin") return;
+          renderAdminUsers();
+          renderSystemActivity();
+        }
+        if (page === "activity") {
+          renderActivityLog();
+        }
+        showPage(page);
+        updateSessionActivity();
+      });
+    });
+
+    saveProfileBtn.addEventListener("click", () => {
+      profileMsg.classList.add("hidden", "success", "danger");
+      const session = getSession();
+      if (!session) return;
+      const newName = profileName.value.trim();
+      if (!newName) {
+        profileMsg.textContent = "Name cannot be empty";
+        profileMsg.classList.remove("hidden");
+        profileMsg.classList.add("danger");
+        return;
+      }
+      const res = updateProfile(session.userId, { name: newName });
+      if (!res.ok) {
+        profileMsg.textContent = "Update failed";
+        profileMsg.classList.add("danger");
+        profileMsg.classList.remove("hidden");
+        return;
+      }
+      profileMsg.textContent = "Profile updated";
+      profileMsg.classList.remove("hidden");
+      profileMsg.classList.add("success");
+      renderAuth();
+    });
+
+    changePassBtn.addEventListener("click", () => {
+      passMsg.classList.add("hidden", "success", "danger");
+      const session = getSession();
+      if (!session) return;
+      const cur = curPass.value;
+      const np = newPass.value;
+      const cp = confPass.value;
+
+      if (!cur || !np || !cp) {
+        passMsg.textContent = "Fill all password fields";
+        passMsg.classList.remove("hidden");
+        passMsg.classList.add("danger");
+        return;
+      }
+      if (np !== cp) {
+        passMsg.textContent = "New passwords do not match";
+        passMsg.classList.remove("hidden");
+        passMsg.classList.add("danger");
+        return;
+      }
+      const res = changePassword(session.userId, cur, np);
+      if (!res.ok) {
+        passMsg.textContent = res.error || "Change failed";
+        passMsg.classList.remove("hidden");
+        passMsg.classList.add("danger");
+        return;
+      }
+      passMsg.textContent = "Password updated";
+      passMsg.classList.remove("hidden");
+      passMsg.classList.add("success");
+      curPass.value = "";
+      newPass.value = "";
+      confPass.value = "";
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      const session = getSession();
+      if (session) {
+        logout(session.userId);
+      }
+      clearSession();
+      renderAuth();
+    });
+
+    demoActionBtn.addEventListener("click", () => {
+      demoActionResult.classList.remove("hidden", "success", "danger", "warn");
+      const session = getSession();
+      if (!session) return;
+      const user = getUserById(session.userId);
+      demoActionResult.textContent = `Action executed for ${user.name} (${user.role})`;
+      demoActionResult.classList.add("success");
+      updateSessionActivity();
+    });
+
+    demoFailBtn.addEventListener("click", () => {
+      demoActionResult.classList.remove("hidden", "success", "danger", "warn");
+      demoActionResult.textContent = "Simulated failed action (permission denied)";
+      demoActionResult.classList.add("danger");
+      updateSessionActivity();
+    });
+
+    // ---------------------------
+    // Admin
+    // ---------------------------
+    function renderAdminUsers() {
+      const users = loadUsers();
+      adminUsersBody.innerHTML = "";
+      const session = getSession();
+      if (!session) return;
+      const actor = getUserById(session.userId);
+      for (const u of users) {
+        const tr = document.createElement("tr");
+        const canDelete = actor.role === "admin" && (u.id === actor.id || u.role !== "admin");
+        const deleteBtn = canDelete
+          ? `<button class="secondary" data-delete="${u.id}">Delete</button>`
+          : `<span class="muted">—</span>`;
+        tr.innerHTML = `
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${u.name}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${u.email}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${u.role}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${deleteBtn}</td>
+        `;
+        adminUsersBody.appendChild(tr);
+      }
+      // attach delete handlers
+      adminUsersBody.querySelectorAll("button[data-delete]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.getAttribute("data-delete");
+          const res = deleteUserById(targetId, session.userId);
+          if (!res.ok) {
+            alert(res.error || "Delete failed");
+            return;
+          }
+          renderAdminUsers();
+        });
+      });
+    }
+
+    function renderSystemActivity() {
+      const list = loadActivity();
+      systemActivityBody.innerHTML = "";
+      for (const e of list.slice(0, 50)) {
+        const tr = document.createElement("tr");
+        const time = new Date(e.time).toLocaleString();
+        const userCell = e.email || "system";
+        tr.innerHTML = `
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${time}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${userCell}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${e.action}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${e.details || ""}</td>
+        `;
+        systemActivityBody.appendChild(tr);
+      }
+    }
+
+    exportUsersBtn.addEventListener("click", () => {
+      exportMsg.classList.add("hidden", "success", "danger");
+      const session = getSession();
+      if (!session) return;
+      const actor = getUserById(session.userId);
+      if (!actor || actor.role !== "admin") {
+        exportMsg.textContent = "Only admins can export";
+        exportMsg.classList.remove("hidden");
+        exportMsg.classList.add("danger");
+        return;
+      }
+      const users = loadUsers();
+      const headers = ["id", "name", "email", "role"];
+      const csvRows = [headers.join(",")];
+      for (const u of users) {
+        const row = headers.map(h => {
+          const val = String(u[h] ?? "");
+          if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+            return '"' + val.replace(/"/g, '""') + '"';
+          }
+          return val;
+        });
+        csvRows.push(row.join(","));
+      }
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "users.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      exportMsg.textContent = "Exported users.csv";
+      exportMsg.classList.remove("hidden");
+      exportMsg.classList.add("success");
+    });
+
+    // ---------------------------
+    // Activity log (per user)
+    // ---------------------------
+    function renderActivityLog() {
+      const session = getSession();
+      if (!session) return;
+      const list = loadActivity().filter(e => e.userId === session.userId);
+      activityBody.innerHTML = "";
+      for (const e of list.slice(0, 50)) {
+        const tr = document.createElement("tr");
+        const time = new Date(e.time).toLocaleString();
+        tr.innerHTML = `
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${time}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${e.action}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${e.details || ""}</td>
+        `;
+        activityBody.appendChild(tr);
+      }
+    }
+
+    // ---------------------------
+    // Init
+    // ---------------------------
+    loadUsers(); // ensure seeded
+    renderAuth();
+
+    // mark activity on any key/mouse
+    window.addEventListener("keydown", updateSessionActivity);
+    window.addEventListener("mousemove", updateSessionActivity);
+    window.addEventListener("click", updateSessionActivity);
+  </script>
+</body>
+</html>
